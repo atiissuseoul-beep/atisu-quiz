@@ -15,13 +15,17 @@ function ResultContent() {
 
   useEffect(() => {
     async function fetchLeaderboard() {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from('scores')
         .select('player_name, score, total, created_at')
         .order('score', { ascending: false })
         .order('created_at', { ascending: true })
         .limit(30)
 
+      if (error) {
+        console.error('랭킹을 불러오지 못했습니다:', error.message)
+        return
+      }
       if (data) setLeaderboard(data)
     }
     fetchLeaderboard()
@@ -55,7 +59,7 @@ function ResultContent() {
             <tbody>
               {leaderboard.map((entry, index) => (
                 <tr
-                  key={index}
+                  key={`${entry.player_name}-${entry.created_at}`}
                   className={`border-t ${entry.player_name === playerName ? 'bg-yellow-50 font-semibold' : ''}`}
                 >
                   <td className="py-3 px-4">{index + 1}</td>
