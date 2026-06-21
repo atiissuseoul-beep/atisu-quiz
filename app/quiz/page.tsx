@@ -2,7 +2,7 @@
 
 import { Suspense, useEffect, useState, useCallback } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
-import type { Product } from '@/lib/supabase'
+import { supabase, type Product } from '@/lib/supabase'
 import { checkAnswer } from '@/utils/score'
 
 function QuizContent() {
@@ -19,7 +19,6 @@ function QuizContent() {
 
   useEffect(() => {
     async function fetchProducts() {
-      const { supabase } = await import('@/lib/supabase')
       const { data, error } = await supabase
         .from('products')
         .select('id, name, image_url')
@@ -45,7 +44,6 @@ function QuizContent() {
 
     if (current + 1 >= products.length) {
       setSaving(true)
-      const { supabase } = await import('@/lib/supabase')
       await supabase.from('scores').insert({
         player_name: playerName,
         score: newScore,
