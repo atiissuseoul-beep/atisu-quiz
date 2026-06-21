@@ -10,6 +10,11 @@ describe('checkAnswer', () => {
     expect(checkAnswer('  마들렌 쿠키  ', '마들렌 쿠키')).toBe(true)
   })
 
+  it('대소문자 무시', () => {
+    expect(checkAnswer('ADELE', 'adele')).toBe(true)
+    expect(checkAnswer('Madeleine-BK', 'madeleine-bk')).toBe(true)
+  })
+
   it('다른 이름은 false', () => {
     expect(checkAnswer('마드렌 쿠키', '마들렌 쿠키')).toBe(false)
   })

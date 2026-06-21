@@ -39,3 +39,6 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# 업로드용 원본 이미지 (대량, 배포 불필요)
+제품사진/

@@ -22,6 +22,7 @@ export type Product = {
   id: number
   name: string
   image_url: string
+  category: string | null
 }
 
 export type Score = {

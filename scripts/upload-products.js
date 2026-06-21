@@ -54,10 +54,23 @@ async function uploadProducts() {
     process.exit(1)
   }
 
-  console.log(`📦 총 ${files.length}개 제품 업로드 시작...\n`)
+  // 이미 등록된 제품명 조회 (중복 업로드 방지)
+  const { data: existingRows, error: fetchError } = await supabase
+    .from('products')
+    .select('name')
+
+  if (fetchError) {
+    console.error(`❌ 기존 제품 목록을 불러오지 못했어요: ${fetchError.message}`)
+    process.exit(1)
+  }
+
+  const existingNames = new Set((existingRows ?? []).map(r => r.name))
+
+  console.log(`📦 총 ${files.length}개 파일 발견 (기존 등록 ${existingNames.size}개)\n`)
 
   let success = 0
   let fail = 0
+  let skipped = 0
 
   for (let i = 0; i < files.length; i++) {
     const file = files[i]
@@ -68,6 +81,13 @@ async function uploadProducts() {
     const storagePath = `products/${Date.now()}-${file}`
 
     process.stdout.write(`[${i + 1}/${files.length}] ${productName} ... `)
+
+    // 이미 등록된 제품은 건너뛰기
+    if (existingNames.has(productName)) {
+      console.log(`⏭️  이미 등록됨, 건너뜀`)
+      skipped++
+      continue
+    }
 
     // Supabase Storage에 이미지 업로드
     const { error: uploadError } = await supabase.storage
@@ -103,7 +123,7 @@ async function uploadProducts() {
     success++
   }
 
-  console.log(`\n완료! ✅ 성공 ${success}개 / ❌ 실패 ${fail}개`)
+  console.log(`\n완료! ✅ 신규 ${success}개 / ⏭️  건너뜀 ${skipped}개 / ❌ 실패 ${fail}개`)
 }
 
 uploadProducts().catch(err => {
