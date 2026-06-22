@@ -1,9 +1,8 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { supabase, type Product, type Score } from '@/lib/supabase'
+import { supabase, type Product, type Score, type Collection } from '@/lib/supabase'
 
-const CATEGORIES = ['STOCKING', 'SNOW', 'DESERT COWBOY', 'TRACKER']
 const ADMIN_PASSWORD = 'junyoung'
 
 function AdminContent() {
@@ -11,9 +10,11 @@ function AdminContent() {
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [filter, setFilter] = useState('all') // 'all' | 'uncategorized' | 카테고리명
-  const [view, setView] = useState<'products' | 'scores'>('products')
+  const [view, setView] = useState<'products' | 'scores' | 'collections'>('products')
   const [scores, setScores] = useState<Score[]>([])
   const [scoresLoaded, setScoresLoaded] = useState(false)
+  const [collections, setCollections] = useState<Collection[]>([])
+  const [newCollection, setNewCollection] = useState('')
 
   // 신규 추가 폼
   const [newFile, setNewFile] = useState<File | null>(null)
@@ -40,7 +41,42 @@ function AdminContent() {
     setLoading(false)
   }
 
-  useEffect(() => { loadProducts() }, [])
+  async function loadCollections() {
+    const { data } = await supabase.from('collections').select('id, name').order('name')
+    if (data) setCollections(data)
+  }
+
+  useEffect(() => { loadProducts(); loadCollections() }, [])
+
+  async function addCollection() {
+    const trimmed = newCollection.trim()
+    if (!trimmed) return
+    const { error } = await supabase.from('collections').insert({ name: trimmed })
+    if (error) {
+      alert('추가 실패 (이미 있는 이름일 수 있어요): ' + error.message)
+      return
+    }
+    setNewCollection('')
+    await loadCollections()
+  }
+
+  async function renameCollection(id: number, oldName: string, newName: string) {
+    const trimmed = newName.trim()
+    if (!trimmed || trimmed === oldName) return
+    // 제품 카테고리 먼저 갱신 (중간 실패해도 기존 이름이 유효)
+    await supabase.from('products').update({ category: trimmed }).eq('category', oldName)
+    await supabase.from('collections').update({ name: trimmed }).eq('id', id)
+    await loadCollections()
+    await loadProducts()
+  }
+
+  async function deleteCollection(id: number, name: string) {
+    if (!confirm(`'${name}' 컬렉션을 삭제할까요? 이 컬렉션 제품은 '미분류'가 돼요.`)) return
+    await supabase.from('products').update({ category: null }).eq('category', name)
+    await supabase.from('collections').delete().eq('id', id)
+    await loadCollections()
+    await loadProducts()
+  }
 
   async function loadScores() {
     const { data } = await supabase
@@ -116,9 +152,9 @@ function AdminContent() {
   }
 
   const uncategorized = products.filter(p => !p.category).length
-  const categoryCounts = CATEGORIES.map(c => ({
-    name: c,
-    count: products.filter(p => p.category === c).length,
+  const categoryCounts = collections.map(c => ({
+    name: c.name,
+    count: products.filter(p => p.category === c.name).length,
   }))
 
   const visible = products.filter(p => {
@@ -149,6 +185,12 @@ function AdminContent() {
           className={`flex-1 py-2.5 rounded-xl text-sm font-semibold border transition-colors ${view === 'products' ? 'bg-black text-white border-black' : 'bg-white text-gray-600 border-gray-300'}`}
         >
           제품 관리
+        </button>
+        <button
+          onClick={() => setView('collections')}
+          className={`flex-1 py-2.5 rounded-xl text-sm font-semibold border transition-colors ${view === 'collections' ? 'bg-black text-white border-black' : 'bg-white text-gray-600 border-gray-300'}`}
+        >
+          컬렉션
         </button>
         <button
           onClick={() => setView('scores')}
@@ -200,8 +242,8 @@ function AdminContent() {
           className="w-full border border-gray-300 rounded-xl px-3 py-2.5 bg-white focus:outline-none focus:ring-2 focus:ring-black"
         >
           <option value="">미분류</option>
-          {CATEGORIES.map((c) => (
-            <option key={c} value={c}>{c}</option>
+          {collections.map((c) => (
+            <option key={c.id} value={c.name}>{c.name}</option>
           ))}
         </select>
         <button
@@ -262,8 +304,8 @@ function AdminContent() {
                 className="border border-gray-300 rounded-lg px-2 py-1 text-sm bg-white"
               >
                 <option value="">미분류</option>
-                {CATEGORIES.map((c) => (
-                  <option key={c} value={c}>{c}</option>
+                {collections.map((c) => (
+                  <option key={c.id} value={c.name}>{c.name}</option>
                 ))}
               </select>
               <button
@@ -277,6 +319,62 @@ function AdminContent() {
         </div>
       )}
       </>
+      )}
+
+      {view === 'collections' && (
+        <div className="flex flex-col gap-4">
+          {/* 새 컬렉션 추가 */}
+          <div className="bg-white border-2 border-black rounded-2xl p-5 flex flex-col gap-3 shadow-md">
+            <div className="flex items-center gap-2">
+              <span className="text-xl">➕</span>
+              <h2 className="text-lg font-bold">새 컬렉션 추가</h2>
+            </div>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                placeholder="컬렉션 이름 (예: SUMMER)"
+                value={newCollection}
+                onChange={(e) => setNewCollection(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && addCollection()}
+                className="flex-1 border border-gray-300 rounded-xl px-3 py-2.5 bg-white focus:outline-none focus:ring-2 focus:ring-black"
+              />
+              <button
+                onClick={addCollection}
+                className="bg-black text-white rounded-xl px-4 py-2.5 font-semibold whitespace-nowrap hover:bg-gray-800"
+              >
+                추가
+              </button>
+            </div>
+          </div>
+
+          {/* 컬렉션 목록 */}
+          {collections.length === 0 ? (
+            <p className="text-gray-400 text-center py-8">아직 컬렉션이 없어요.</p>
+          ) : (
+            <div className="flex flex-col gap-2">
+              <p className="text-xs text-gray-400">이름을 고치고 다른 곳을 누르면 저장돼요. 그 컬렉션 제품도 함께 바뀝니다.</p>
+              {collections.map((c) => (
+                <div key={c.id} className="flex items-center gap-3 bg-white border border-gray-200 rounded-xl p-2">
+                  <input
+                    key={`col-${c.id}-${c.name}`}
+                    defaultValue={c.name}
+                    onBlur={(e) => renameCollection(c.id, c.name, e.target.value)}
+                    className="flex-1 min-w-0 text-sm font-semibold border border-gray-200 hover:border-gray-300 focus:border-black rounded-lg px-2 py-1.5 focus:outline-none"
+                  />
+                  <span className="text-xs text-gray-400 shrink-0">
+                    {products.filter(p => p.category === c.name).length}개
+                  </span>
+                  <button
+                    onClick={() => deleteCollection(c.id, c.name)}
+                    className="text-red-500 text-sm px-2 shrink-0"
+                  >
+                    삭제
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       )}
 
       {view === 'scores' && (

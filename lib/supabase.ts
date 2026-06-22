@@ -31,3 +31,8 @@ export type Score = {
   total: number
   created_at: string
 }
+
+export type Collection = {
+  id: number
+  name: string
+}

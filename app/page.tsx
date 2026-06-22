@@ -5,7 +5,6 @@ import { useRouter } from 'next/navigation'
 import { supabase, type Score } from '@/lib/supabase'
 
 const COUNT_OPTIONS = [10, 25]
-const CATEGORIES = ['STOCKING', 'SNOW', 'DESERT COWBOY', 'TRACKER']
 const MEDALS = ['🥇', '🥈', '🥉']
 
 export default function HomePage() {
@@ -13,6 +12,7 @@ export default function HomePage() {
   const [count, setCount] = useState(25)
   const [category, setCategory] = useState('all')
   const [top3, setTop3] = useState<Score[]>([])
+  const [collections, setCollections] = useState<string[]>([])
   const router = useRouter()
 
   useEffect(() => {
@@ -25,7 +25,12 @@ export default function HomePage() {
         .limit(3)
       if (data) setTop3(data)
     }
+    async function fetchCollections() {
+      const { data } = await supabase.from('collections').select('name').order('name')
+      if (data) setCollections(data.map(c => c.name))
+    }
     fetchTop3()
+    fetchCollections()
   }, [])
 
   function handleStart(mode: 'normal' | 'timeattack') {
@@ -83,7 +88,7 @@ export default function HomePage() {
           className="w-full border border-gray-300 rounded-xl px-4 py-3 text-base bg-white focus:outline-none focus:ring-2 focus:ring-black"
         >
           <option value="all">전체</option>
-          {CATEGORIES.map((c) => (
+          {collections.map((c) => (
             <option key={c} value={c}>{c}</option>
           ))}
         </select>
