@@ -4,6 +4,8 @@ import { Suspense, useEffect, useState } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { supabase, type Score } from '@/lib/supabase'
 
+type WrongItem = { image_url: string; answer: string; input: string }
+
 function ResultContent() {
   const searchParams = useSearchParams()
   const router = useRouter()
@@ -18,13 +20,26 @@ function ResultContent() {
   const correctPoints = correct * 100
   const timePoints = timeLeft * 10
 
-  const [phase, setPhase] = useState<'calculating' | 'result'>('calculating')
+  const [phase, setPhase] = useState<'calculating' | 'review' | 'result'>('calculating')
+  const [wrong, setWrong] = useState<WrongItem[]>([])
   const [leaderboard, setLeaderboard] = useState<Score[]>([])
 
+  // 오답 목록 불러오기
   useEffect(() => {
-    const timer = setTimeout(() => setPhase('result'), 2500)
-    return () => clearTimeout(timer)
+    try {
+      const raw = sessionStorage.getItem('atisu-wrong')
+      if (raw) setWrong(JSON.parse(raw))
+    } catch {
+      // 무시
+    }
   }, [])
+
+  // 점수 계산 화면 후: 일반 모드 → 오답노트, 타임어택 → 바로 랭킹
+  useEffect(() => {
+    const next = isTimeAttack ? 'result' : 'review'
+    const timer = setTimeout(() => setPhase(next), 2000)
+    return () => clearTimeout(timer)
+  }, [isTimeAttack])
 
   useEffect(() => {
     async function fetchLeaderboard() {
@@ -41,6 +56,7 @@ function ResultContent() {
     fetchLeaderboard()
   }, [])
 
+  // 1) 점수 계산 화면
   if (phase === 'calculating') {
     return (
       <main className="flex flex-col items-center gap-8 p-8 w-full max-w-sm mx-auto min-h-screen justify-center">
@@ -80,6 +96,56 @@ function ResultContent() {
     )
   }
 
+  // 2) 오답노트 (일반 모드)
+  if (phase === 'review') {
+    return (
+      <main className="flex flex-col items-center gap-6 p-6 w-full max-w-lg mx-auto">
+        <div className="w-full bg-white rounded-2xl p-6 shadow-sm text-center">
+          <p className="text-gray-500 mb-1">{playerName}님의 결과</p>
+          <p className="text-5xl font-bold">
+            {finalScore.toLocaleString()}
+            <span className="text-xl text-gray-400">점</span>
+          </p>
+          <div className="mt-3 flex justify-center gap-4 text-sm text-gray-400">
+            <span>정답 {correct}/{total}개</span>
+            <span>남은 시간 {timeLeft}초</span>
+          </div>
+        </div>
+
+        <div className="w-full">
+          <h2 className="text-lg font-semibold mb-3">📝 오답노트</h2>
+          {wrong.length === 0 ? (
+            <div className="bg-white rounded-2xl shadow-sm p-8 text-center">
+              <p className="text-4xl mb-2">🎉</p>
+              <p className="font-semibold">전부 맞혔어요!</p>
+            </div>
+          ) : (
+            <div className="flex flex-col gap-2">
+              {wrong.map((w, i) => (
+                <div key={i} className="flex items-center gap-3 bg-white border border-gray-200 rounded-xl p-2">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={w.image_url} alt="제품" className="w-14 h-14 object-contain rounded bg-gray-100 shrink-0" />
+                  <div className="flex-1 min-w-0 text-sm">
+                    <p className="font-semibold text-green-700 truncate">정답: {w.answer}</p>
+                    <p className="text-gray-400 truncate">내 답: {w.input || '(빈칸)'}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <button
+          onClick={() => setPhase('result')}
+          className="w-full bg-black text-white rounded-xl px-4 py-3 text-lg font-semibold"
+        >
+          다음
+        </button>
+      </main>
+    )
+  }
+
+  // 3) 랭킹
   return (
     <main className="flex flex-col items-center gap-6 p-6 w-full max-w-lg mx-auto">
       <div className="w-full bg-white rounded-2xl p-6 shadow-sm text-center">

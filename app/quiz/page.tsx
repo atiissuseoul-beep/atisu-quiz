@@ -29,6 +29,7 @@ function QuizContent() {
   const timeLeftRef = useRef(totalTime)
   const currentRef = useRef(0)
   const savingRef = useRef(false)
+  const wrongRef = useRef<{ image_url: string; answer: string; input: string }[]>([])
   useEffect(() => { scoreRef.current = score }, [score])
   useEffect(() => { timeLeftRef.current = timeLeft }, [timeLeft])
   useEffect(() => { currentRef.current = current }, [current])
@@ -68,6 +69,8 @@ function QuizContent() {
       score: finalScore,
       total,
     })
+    // 이번 판 오답 목록 저장 (만점이면 빈 배열 — 이전 판 잔존 방지)
+    sessionStorage.setItem('atisu-wrong', JSON.stringify(wrongRef.current))
     router.push(
       `/result?name=${encodeURIComponent(playerName)}&correct=${correctCount}&total=${total}&timeLeft=${remainingTime}&score=${finalScore}&fail=${fail}&mode=${isTimeAttack ? 'timeattack' : 'normal'}`
     )
@@ -77,8 +80,15 @@ function QuizContent() {
     if (saving || products.length === 0 || feedback) return
     const product = products[currentRef.current % products.length]
     const isCorrect = checkAnswer(input, product.name)
-    if (isCorrect) setScore(s => s + 1)
-    else setWrongCount(w => w + 1)
+    if (isCorrect) {
+      setScore(s => s + 1)
+    } else {
+      setWrongCount(w => w + 1)
+      wrongRef.current = [
+        ...wrongRef.current,
+        { image_url: product.image_url, answer: product.name, input: input.trim() },
+      ]
+    }
     setFeedback({ isCorrect, answer: product.name })
   }, [saving, products, input, feedback])
 
