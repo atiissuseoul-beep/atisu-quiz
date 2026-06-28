@@ -63,7 +63,7 @@ function QuizContent() {
     savingRef.current = true
     setSaving(true)
     const finalScore = isTimeAttack
-      ? correctCount * 100
+      ? correctCount * 120
       : correctCount * 100 + remainingTime * 10
     await supabase.from('scores').insert({
       player_name: playerName,
