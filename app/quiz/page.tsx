@@ -25,6 +25,7 @@ function QuizContent() {
   const [feedback, setFeedback] = useState<{ isCorrect: boolean; answer: string } | null>(null)
   const [timeLeft, setTimeLeft] = useState(totalTime)
 
+  const inputRef = useRef<HTMLInputElement>(null)
   const scoreRef = useRef(0)
   const timeLeftRef = useRef(totalTime)
   const currentRef = useRef(0)
@@ -142,6 +143,13 @@ function QuizContent() {
     return () => clearTimeout(timer)
   }, [feedback, current, products, finishQuiz, isTimeAttack])
 
+  // 다음 문제로 넘어가면 답변창에 자동 포커스 (클릭 불필요)
+  useEffect(() => {
+    if (!feedback && !saving && !loading && products.length > 0) {
+      inputRef.current?.focus()
+    }
+  }, [feedback, saving, loading, products.length, current])
+
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
       if (e.key === 'Enter') handleSubmit()
@@ -209,6 +217,7 @@ function QuizContent() {
       </div>
 
       <input
+        ref={inputRef}
         type="text"
         placeholder="제품명을 입력하세요"
         value={input}
