@@ -19,11 +19,19 @@ export default function HomePage() {
     async function fetchTop3() {
       const { data } = await supabase
         .from('scores')
-        .select('player_name, score, total, created_at')
+        .select('id, player_name, score, total, created_at')
         .order('score', { ascending: false })
         .order('created_at', { ascending: true })
-        .limit(3)
-      if (data) setTop3(data)
+      if (data) {
+        // 이름별 최고 기록만 남기기 (점수순 정렬이므로 첫 등장이 최고 기록)
+        const seen = new Set<string>()
+        const deduped = data.filter((entry) => {
+          if (seen.has(entry.player_name)) return false
+          seen.add(entry.player_name)
+          return true
+        })
+        setTop3(deduped.slice(0, 3))
+      }
     }
     async function fetchCollections() {
       const { data } = await supabase.from('collections').select('name').order('name')

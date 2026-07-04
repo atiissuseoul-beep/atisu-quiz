@@ -81,7 +81,7 @@ function AdminContent() {
   async function loadScores() {
     const { data } = await supabase
       .from('scores')
-      .select('player_name, score, total, created_at')
+      .select('id, player_name, score, total, created_at')
       .order('score', { ascending: false })
       .order('created_at', { ascending: true })
       .limit(200)
@@ -92,6 +92,16 @@ function AdminContent() {
   useEffect(() => {
     if (view === 'scores' && !scoresLoaded) loadScores()
   }, [view, scoresLoaded])
+
+  async function deleteScore(entry: Score) {
+    if (!confirm(`${entry.player_name}님의 ${entry.score.toLocaleString()}점 기록을 삭제할까요?`)) return
+    const { data, error } = await supabase.from('scores').delete().eq('id', entry.id).select()
+    if (error || !data?.length) {
+      alert('삭제 실패: ' + (error?.message ?? 'Supabase에 scores 삭제 정책(RLS)이 필요해요.'))
+      return
+    }
+    setScores(s => s.filter(e => e.id !== entry.id))
+  }
 
   async function updateCategory(id: number, category: string) {
     const value = category || null
@@ -391,16 +401,25 @@ function AdminContent() {
                   <th className="py-3 px-4 text-left">이름</th>
                   <th className="py-3 px-4 text-right">점수</th>
                   <th className="py-3 px-4 text-right">날짜</th>
+                  <th className="py-3 px-2"></th>
                 </tr>
               </thead>
               <tbody>
                 {scores.map((entry, index) => (
-                  <tr key={`${entry.player_name}-${entry.created_at}`} className="border-t">
+                  <tr key={entry.id} className="border-t">
                     <td className="py-3 px-4">{index + 1}</td>
                     <td className="py-3 px-4">{entry.player_name}</td>
                     <td className="py-3 px-4 text-right">{entry.score.toLocaleString()}점</td>
                     <td className="py-3 px-4 text-right text-gray-400">
                       {new Date(entry.created_at).toLocaleDateString('ko-KR')}
+                    </td>
+                    <td className="py-3 px-2 text-right">
+                      <button
+                        onClick={() => deleteScore(entry)}
+                        className="text-red-500 text-sm px-2 shrink-0"
+                      >
+                        삭제
+                      </button>
                     </td>
                   </tr>
                 ))}

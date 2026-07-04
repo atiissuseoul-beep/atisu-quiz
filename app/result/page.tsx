@@ -45,7 +45,7 @@ function ResultContent() {
     async function fetchLeaderboard() {
       const { data, error } = await supabase
         .from('scores')
-        .select('player_name, score, total, created_at')
+        .select('id, player_name, score, total, created_at')
         .order('score', { ascending: false })
         .order('created_at', { ascending: true })
 

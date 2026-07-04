@@ -26,6 +26,7 @@ export type Product = {
 }
 
 export type Score = {
+  id: number
   player_name: string
   score: number
   total: number
