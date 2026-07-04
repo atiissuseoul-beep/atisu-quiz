@@ -48,9 +48,17 @@ function ResultContent() {
         .select('player_name, score, total, created_at')
         .order('score', { ascending: false })
         .order('created_at', { ascending: true })
-        .limit(30)
 
-      if (data) setLeaderboard(data)
+      if (data) {
+        // 이름별 최고 기록만 남기기 (점수순 정렬이므로 첫 등장이 최고 기록)
+        const seen = new Set<string>()
+        const deduped = data.filter((entry) => {
+          if (seen.has(entry.player_name)) return false
+          seen.add(entry.player_name)
+          return true
+        })
+        setLeaderboard(deduped.slice(0, 30))
+      }
       if (error) console.error('leaderboard fetch error:', error)
     }
     fetchLeaderboard()
